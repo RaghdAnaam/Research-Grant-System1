@@ -8,7 +8,7 @@
 <p>Below are the grants you are leading</p>
 
 @if ($grants->isEmpty())
-    <p>You are not leading any grants yet.</p>
+    <p>You are not leading any grants yet, wait</p>
 @else
     <table class="table table-bordered">
         <thead>
