@@ -5,7 +5,7 @@
 @section('content')
 <h1>Welcome, {{ auth()->user()->name }}!</h1>
 
-<p>Below are the grants you are leading:</p>
+<p>Below are the grants you are leading</p>
 
 @if ($grants->isEmpty())
     <p>You are not leading any grants yet.</p>
