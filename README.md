@@ -7,17 +7,24 @@ A Laravel-based web application for managing research grants, academicians, and 
 - PHP >= 8.2
 - Composer
 - Node.js >= 18 & npm
-- SQLite (default) or MySQL
+- MySQL
 
 ## Setup (macOS)
 
 ### 1. Install Prerequisites via Homebrew
 
 ```bash
-brew install php composer node sqlite
+brew install php composer node mysql
 ```
 
-### 2. Clone and Install Dependencies
+### 2. Start MySQL and Create the Database
+
+```bash
+brew services start mysql
+mysql -u root -e "CREATE DATABASE laravel;"
+```
+
+### 3. Clone and Install Dependencies
 
 ```bash
 git clone https://github.com/RaghdAnaam/Research-Grant-System1.git
@@ -26,53 +33,39 @@ composer install
 npm install
 ```
 
-### 3. Configure Environment
+### 4. Configure Environment
 
 ```bash
 cp .env.example .env
 php artisan key:generate
 ```
 
-Edit `.env` to use SQLite (simplest option):
+The default `.env.example` is already configured for MySQL with these settings:
 
 ```
-DB_CONNECTION=sqlite
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=laravel
-# DB_USERNAME=root
-# DB_PASSWORD=
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel
+DB_USERNAME=root
+DB_PASSWORD=
 ```
 
-Then create the database file:
+If your MySQL has a password, update `DB_PASSWORD` accordingly.
 
-```bash
-touch database/database.sqlite
-```
-
-**Or** to use MySQL instead, install and start MySQL:
-
-```bash
-brew install mysql
-brew services start mysql
-mysql -u root -e "CREATE DATABASE laravel;"
-```
-
-Then keep the default MySQL settings in `.env`.
-
-### 4. Run Migrations
+### 5. Run Migrations
 
 ```bash
 php artisan migrate
 ```
 
-### 5. Build Frontend Assets
+### 6. Build Frontend Assets
 
 ```bash
 npm run build
 ```
 
-### 6. Start the Development Server
+### 7. Start the Development Server
 
 ```bash
 php artisan serve
