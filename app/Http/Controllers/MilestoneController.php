@@ -2,96 +2,109 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Milestone;
 use App\Models\Grant;
+use App\Models\Milestone;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class MilestoneController extends Controller
 {
-    public function index(Grant $grant)
-{
-    return view('milestones.index', compact('grant'));
-}
-
-
-    public function create(Grant $grant)
+    public function index(Grant $grant): View
     {
-        // Pass the grant to the milestone creation view
+        $this->authorizeLeaderForGrant($grant);
+        $grant->load(['leader', 'members', 'milestones']);
+
+        return view('milestones.index', compact('grant'));
+    }
+
+    public function create(Grant $grant): View
+    {
+        $this->authorizeLeaderForGrant($grant);
+
         return view('milestones.create', compact('grant'));
     }
 
-    public function store(Request $request)
-{
-    $request->validate([
-        'grant_id' => 'required|exists:grants,id',
-        'name' => 'required|string|max:255',
-        'target_completion_date' => 'required|date',
-        'deliverable' => 'required|string|max:255',
-    ]);
-
-    Milestone::create([
-        'grant_id' => $request->input('grant_id'),
-        'milestone_name' => $request->input('name'),
-        'target_completion_date' => $request->input('target_completion_date'),
-        'deliverable' => $request->input('deliverable'),
-        'status' => 'Pending',
-    ]);
-
-    return redirect()->route('milestones.index', ['grant' => $request->input('grant_id')])
-                     ->with('success', 'Milestone added successfully.');
-}
-
-public function edit(Milestone $milestone)
-{
-    return view('milestones.edit', compact('milestone'));
-}
-
-
-public function update(Request $request, Milestone $milestone)
-{
-    $request->validate([
-        'milestone_name' => 'required|string|max:255', // Use milestone_name, as per the form
-        'target_completion_date' => 'required|date',
-        'deliverable' => 'required|string|max:255',
-        'status' => 'required|in:Pending,In Progress,Completed',
-        'remarks' => 'nullable|string',
-    ]);
-
-    // Update the milestone
-    $milestone->update([
-        'milestone_name' => $request->input('milestone_name'),
-        'target_completion_date' => $request->input('target_completion_date'),
-        'deliverable' => $request->input('deliverable'),
-        'status' => $request->input('status'),
-        'remarks' => $request->input('remarks'),
-    ]);
-
-    // Redirect to the milestones page
-    return redirect()->route('milestones.index', ['grant' => $milestone->grant_id])
-                     ->with('success', 'Milestone updated successfully.');
-}
-public function updateStatus(Request $request, Milestone $milestone)
-{
-    $request->validate([
-        'status' => 'required|in:Pending,In Progress,Completed',
-        'remarks' => 'nullable|string',
-    ]);
-
-    $milestone->update([
-        'status' => $request->input('status'),
-        'remarks' => $request->input('remarks'),
-    ]);
-
-    return redirect()->route('milestones.index', ['grant' => $milestone->grant_id])
-                     ->with('success', 'Milestone status updated successfully.');
-}
-
-    
-
-    public function destroy(Milestone $milestone)
+    public function store(Request $request): RedirectResponse
     {
+        $validated = $request->validate([
+            'grant_id' => 'required|exists:grants,id',
+            'name' => 'required|string|max:255',
+            'target_completion_date' => 'required|date',
+            'deliverable' => 'required|string|max:255',
+        ]);
+
+        $grant = Grant::findOrFail($validated['grant_id']);
+        $this->authorizeLeaderForGrant($grant);
+
+        Milestone::create([
+            'grant_id' => $grant->id,
+            'milestone_name' => $validated['name'],
+            'target_completion_date' => $validated['target_completion_date'],
+            'deliverable' => $validated['deliverable'],
+            'status' => 'Pending',
+        ]);
+
+        return redirect()->route('milestones.index', $grant)
+            ->with('success', 'Milestone added successfully.');
+    }
+
+    public function edit(Milestone $milestone): View
+    {
+        $this->authorizeLeaderForGrant($milestone->grant);
+
+        return view('milestones.edit', compact('milestone'));
+    }
+
+    public function update(Request $request, Milestone $milestone): RedirectResponse
+    {
+        $this->authorizeLeaderForGrant($milestone->grant);
+
+        $validated = $request->validate([
+            'milestone_name' => 'required|string|max:255',
+            'target_completion_date' => 'required|date',
+            'deliverable' => 'required|string|max:255',
+            'status' => 'required|in:Pending,In Progress,Completed',
+            'remarks' => 'nullable|string',
+        ]);
+
+        $milestone->update($validated);
+
+        return redirect()->route('milestones.index', $milestone->grant_id)
+            ->with('success', 'Milestone updated successfully.');
+    }
+
+    public function updateStatus(Request $request, Milestone $milestone): RedirectResponse
+    {
+        $this->authorizeLeaderForGrant($milestone->grant);
+
+        $validated = $request->validate([
+            'status' => 'required|in:Pending,In Progress,Completed',
+            'remarks' => 'nullable|string',
+        ]);
+
+        $milestone->update($validated);
+
+        return redirect()->route('milestones.index', $milestone->grant_id)
+            ->with('success', 'Milestone status updated successfully.');
+    }
+
+    public function destroy(Milestone $milestone): RedirectResponse
+    {
+        $grantId = $milestone->grant_id;
+        $this->authorizeLeaderForGrant($milestone->grant);
         $milestone->delete();
-        return redirect()->back()->with('success', 'Milestone deleted successfully.');
-        
+
+        return redirect()->route('milestones.index', $grantId)
+            ->with('success', 'Milestone deleted successfully.');
+    }
+
+    private function authorizeLeaderForGrant(Grant $grant): void
+    {
+        if (auth()->user()?->academician_id !== null && (int) auth()->user()->academician_id === (int) $grant->leader_id) {
+            return;
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

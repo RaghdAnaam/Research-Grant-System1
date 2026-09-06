@@ -9,16 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('academician_id')->nullable()->constrained('academicians')->nullOnDelete();
-            $table->enum('role', ['Admin', 'Leader', 'Academic'])->default('Academic');
+            $table->unique('academician_id');
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('academician_id');
-            $table->dropColumn('role');
+            $table->dropUnique(['academician_id']);
         });
     }
 };
