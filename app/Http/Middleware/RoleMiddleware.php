@@ -4,13 +4,19 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, $role)
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        
-        if (auth()->check() && auth()->user()->role === $role) {
+        $user = $request->user();
+
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        if ($roles !== [] && $user->hasAnyRole($roles)) {
             return $next($request);
         }
 

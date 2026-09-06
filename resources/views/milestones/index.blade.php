@@ -69,8 +69,9 @@
     @csrf
     @method('PATCH')
     <select name="status" class="form-select form-select-sm">
-        <option value="Pending" {{ $milestone->status == 'Pending' ? 'selected' : '' }}>Pending</option>
-        <option value="Completed" {{ $milestone->status == 'Completed' ? 'selected' : '' }}>Completed</option>
+        @foreach (\App\Models\Milestone::statuses() as $status)
+            <option value="{{ $status }}" {{ $milestone->status === $status ? 'selected' : '' }}>{{ $status }}</option>
+        @endforeach
     </select>
     <textarea name="remarks" class="form-control form-control-sm mt-1" placeholder="Add remarks (optional)">{{ $milestone->remarks }}</textarea>
     <button type="submit" class="btn btn-sm btn-primary mt-1">Update</button>

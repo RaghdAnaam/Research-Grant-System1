@@ -14,18 +14,18 @@ class Grant extends Model
         'grant_provider',
         'leader_id',
         'grant_amount',
-        'start_date', 
+        'start_date',
         'duration_months',
     ];
 
     public function leader()
     {
-        return $this->belongsTo(User::class, 'leader_id');
+        return $this->belongsTo(Academician::class, 'leader_id');
     }
 
     public function members()
     {
-        return $this->belongsToMany(User::class, 'academician_grant', 'grant_id', 'academician_id');
+        return $this->belongsToMany(Academician::class, 'academician_grant', 'grant_id', 'academician_id');
     }
 
     public function milestones()
@@ -33,7 +33,3 @@ class Grant extends Model
         return $this->hasMany(Milestone::class, 'grant_id');
     }
 }
-
-
-
-

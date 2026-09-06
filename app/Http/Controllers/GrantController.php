@@ -2,98 +2,131 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Grant;
 use App\Models\Academician;
+use App\Models\Grant;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class GrantController extends Controller
 {
-    public function index()
+    public function index(Request $request): View
     {
-        // Fetch all grants with associated leader and members
-        $grants = Grant::with('leader', 'members')->get();
-        return view('grants.index', compact('grants'));
+        $search = $request->get('search');
+
+        $grants = Grant::with(['leader', 'members', 'milestones'])
+            ->when($search, function ($query, $search) {
+                $query->where('project_title', 'like', "%{$search}%")
+                    ->orWhere('grant_provider', 'like', "%{$search}%");
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('grants.index', compact('grants', 'search'));
     }
 
-    public function create()
+    public function create(): View
     {
-        $academicians = Academician::all(); // Fetch all academicians
+        $academicians = Academician::orderBy('name')->get();
+
         return view('grants.create', compact('academicians'));
     }
-    
 
-
-public function store(Request $request)
-{
-    
-    // Validate form inputs
-    $request->validate([
-        'project_title' => 'required|string|max:255',
-        'grant_provider' => 'required|string|max:255',
-        'leader_id' => 'required|exists:academicians,id', // Validate leader exists
-        'grant_amount' => 'required|numeric|min:0',
-        'start_date' => 'required|date',
-        'duration_months' => 'required|integer|min:1',
-    ]);
-
-    // Create the grant
-    Grant::create($request->all());
-
-    // Redirect to the grants index page with success message
-    return redirect()->route('grants.index')->with('success', 'Grant added successfully.');
-}
-
-    
-
-    public function edit(Grant $grant)
+    public function store(Request $request): RedirectResponse
     {
-        // Fetch all academicians for editing
-        $academicians = Academician::all();
+        $validated = $this->validateGrant($request);
+        $memberIds = $this->memberIds($request, (int) $validated['leader_id']);
+        unset($validated['member_ids']);
+
+        $grant = Grant::create($validated);
+        $grant->members()->sync($memberIds);
+
+        return redirect()->route('grants.show', $grant)->with('success', 'Grant added successfully.');
+    }
+
+    public function show(Grant $grant): View
+    {
+        $this->authorizeGrantView($grant, request()->user());
+
+        $grant->load(['leader', 'members', 'milestones']);
+        $canManageMilestones = $this->userLeadsGrant($grant, request()->user());
+
+        return view('grants.show', compact('grant', 'canManageMilestones'));
+    }
+
+    public function edit(Grant $grant): View
+    {
+        $grant->load('members');
+        $academicians = Academician::orderBy('name')->get();
+
         return view('grants.edit', compact('grant', 'academicians'));
     }
 
-    public function update(Request $request, Grant $grant)
+    public function update(Request $request, Grant $grant): RedirectResponse
     {
-        $request->validate([
-            'leader_id' => 'required|exists:users,id', // Ensure leader exists in users table
-            'grant_provider' => 'required|string|max:255',
-            'project_title' => 'required|string|max:255',
-            'grant_amount' => 'required|numeric',
-            'start_date' => 'required|date',
-            'duration_months' => 'required|integer|min:1',
-        ]);
+        $validated = $this->validateGrant($request);
+        $memberIds = $this->memberIds($request, (int) $validated['leader_id']);
+        unset($validated['member_ids']);
 
-        $grant->update($request->all());
+        $grant->update($validated);
+        $grant->members()->sync($memberIds);
 
-        return redirect()->route('grants.index')->with('success', 'Grant updated successfully.');
+        return redirect()->route('grants.show', $grant)->with('success', 'Grant updated successfully.');
     }
 
-    public function destroy(Grant $grant)
+    public function destroy(Grant $grant): RedirectResponse
     {
         $grant->delete();
 
         return redirect()->route('grants.index')->with('success', 'Grant deleted successfully.');
     }
 
-    public function academicDashboard()
+    private function validateGrant(Request $request): array
     {
-        // Fetch grants where the user is a member
-        $grants = auth()->user()->grantsAsMember()->with('leader')->get();
-
-        return view('academic.dashboard', compact('grants'));
+        return $request->validate([
+            'project_title' => 'required|string|max:255',
+            'grant_provider' => 'required|string|max:255',
+            'leader_id' => 'required|exists:academicians,id',
+            'member_ids' => 'nullable|array',
+            'member_ids.*' => 'integer|distinct|exists:academicians,id',
+            'grant_amount' => 'required|numeric|min:0',
+            'start_date' => 'required|date',
+            'duration_months' => 'required|integer|min:1',
+        ]);
     }
 
-    public function leaderDashboard()
-{
-    // Ensure the authenticated user has the 'ProjectLeader' role
-    if (auth()->user()->role !== 'ProjectLeader') {
+    private function memberIds(Request $request, int $leaderId): array
+    {
+        return collect($request->input('member_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->reject(fn ($id) => $id === $leaderId)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function authorizeGrantView(Grant $grant, User $user): void
+    {
+        if ($user->hasRole('Admin') || $this->userLeadsGrant($grant, $user) || $this->userIsGrantMember($grant, $user)) {
+            return;
+        }
+
         abort(403, 'Unauthorized action.');
     }
 
-    // Fetch grants where the user is the leader
-    $grants = Grant::where('leader_id', auth()->id())->get();
+    private function userLeadsGrant(Grant $grant, User $user): bool
+    {
+        return $user->academician_id !== null && (int) $grant->leader_id === (int) $user->academician_id;
+    }
 
-    return view('leader.dashboard', compact('grants'));
-}
+    private function userIsGrantMember(Grant $grant, User $user): bool
+    {
+        if ($user->academician_id === null) {
+            return false;
+        }
 
+        return $grant->members()->where('academicians.id', $user->academician_id)->exists();
+    }
 }
