@@ -35,16 +35,6 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        User::updateOrCreate(
-            ['email' => 'leader@example.com'],
-            [
-                'name' => $drAhmad->name,
-                'password' => Hash::make('password'),
-                'role' => UserRole::Leader,
-                'academician_id' => $drAhmad->id,
-            ],
-        );
-
         $drAli = Academician::updateOrCreate(
             ['staff_number' => 'STF002'],
             [
@@ -56,16 +46,6 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        User::updateOrCreate(
-            ['email' => 'academic@example.com'],
-            [
-                'name' => $drAli->name,
-                'password' => Hash::make('password'),
-                'role' => UserRole::Academic,
-                'academician_id' => $drAli->id,
-            ],
-        );
-
         $drSara = Academician::updateOrCreate(
             ['staff_number' => 'STF003'],
             [
@@ -74,16 +54,6 @@ class DatabaseSeeder extends Seeder
                 'college' => 'College of Engineering',
                 'department' => 'Smart Systems',
                 'position' => 'Assoc Prof',
-            ],
-        );
-
-        User::updateOrCreate(
-            ['email' => 'sara@example.com'],
-            [
-                'name' => $drSara->name,
-                'password' => Hash::make('password'),
-                'role' => UserRole::Leader,
-                'academician_id' => $drSara->id,
             ],
         );
 

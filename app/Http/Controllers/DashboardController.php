@@ -25,7 +25,7 @@ class DashboardController extends Controller
                 ->orWhereHas('milestones', fn ($q) => $q->where('status', '!=', 'Completed'));
         })->count();
 
-        return view('Admin.dashboard', [
+        return view('admin.dashboard', [
             'grantCount' => Grant::count(),
             'academicianCount' => Academician::count(),
             'activeProjects' => $activeProjects,
@@ -44,7 +44,7 @@ class DashboardController extends Controller
         $grants = (clone $grantQuery)->get();
         $grantIds = $grants->pluck('id');
 
-        return view('Leader.dashboard', [
+        return view('leader.dashboard', [
             'grants' => $grants,
             'myGrantsCount' => $grants->count(),
             'pendingMilestones' => Milestone::whereIn('grant_id', $grantIds)->where('status', 'Pending')->count(),
@@ -59,7 +59,7 @@ class DashboardController extends Controller
             ? $academician->grantsAsLeader()->with(['members', 'milestones'])->latest()->paginate(10)->withQueryString()
             : Grant::query()->whereRaw('1 = 0')->paginate(10);
 
-        return view('Leader.grants', compact('grants'));
+        return view('leader.grants', compact('grants'));
     }
 
     public function academic(Request $request): View
@@ -74,7 +74,7 @@ class DashboardController extends Controller
                 || $grant->milestones->contains(fn ($m) => $m->status !== 'Completed');
         })->count();
 
-        return view('Academic.dashboard', [
+        return view('academic.dashboard', [
             'grants' => $grants,
             'assignedGrantsCount' => $grants->count(),
             'ongoingProjects' => $ongoingProjects,
@@ -88,6 +88,6 @@ class DashboardController extends Controller
             ? $academician->grantsAsMember()->with(['leader', 'members', 'milestones'])->latest()->paginate(10)->withQueryString()
             : Grant::query()->whereRaw('1 = 0')->paginate(10);
 
-        return view('Academic.grants', compact('grants'));
+        return view('academic.grants', compact('grants'));
     }
 }

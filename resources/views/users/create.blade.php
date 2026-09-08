@@ -3,7 +3,7 @@
 @section('title', 'Add User')
 
 @section('content')
-<x-page-header title="Add User" subtitle="Create a new login account and assign a role." />
+<x-page-header title="Add User" subtitle="Create a login account and link it to an academician profile." />
 
 <div class="card-panel form-card">
     @if ($errors->any())

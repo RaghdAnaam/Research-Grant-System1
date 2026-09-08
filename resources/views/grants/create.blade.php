@@ -32,7 +32,7 @@
         @endforeach
     </select>
 </div>
-/    <div class="mb-3">
+    <div class="mb-3">
         <label for="grant_amount" class="form-label">Grant Amount</label>
         <input type="number" name="grant_amount" id="grant_amount" class="form-control" required>
     </div>

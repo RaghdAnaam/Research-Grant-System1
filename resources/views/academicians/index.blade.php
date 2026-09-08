@@ -3,7 +3,6 @@
 @section('title', 'Manage Academicians')
 
 @section('content')
-<h1>Manage Academicians</h1>
 <a href="{{ route('academicians.create') }}" class="btn btn-primary mb-3">Add Academician</a>
 
 <table class="table table-bordered">

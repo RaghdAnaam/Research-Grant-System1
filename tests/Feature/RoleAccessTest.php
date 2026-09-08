@@ -35,6 +35,26 @@ class RoleAccessTest extends TestCase
         $this->assertTrue($grant->members()->whereKey($member->id)->exists());
     }
 
+    public function test_admin_can_create_a_user_linked_to_an_existing_academician(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $academician = Academician::create($this->academicianData('Dr New Leader', 'STF100', 'new-leader@example.com'));
+
+        $this->actingAs($admin)->post(route('users.store'), [
+            'name' => 'Dr New Leader',
+            'email' => 'new-leader@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => UserRole::Leader->value,
+            'academician_id' => $academician->id,
+        ])->assertRedirect(route('users.index'));
+
+        $user = User::where('email', 'new-leader@example.com')->firstOrFail();
+
+        $this->assertSame(UserRole::Leader, $user->role);
+        $this->assertSame($academician->id, $user->academician_id);
+    }
+
     public function test_project_leader_only_sees_grants_they_lead(): void
     {
         [$leaderUser, $leaderProfile] = $this->userWithProfile(UserRole::Leader, 'Dr Ahmad', 'STF001', 'leader@example.com');
