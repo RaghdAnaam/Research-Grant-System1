@@ -44,12 +44,17 @@ class UserController extends Controller
     {
         $validated = $this->validateUser($request);
 
-        if ($validated['role'] === UserRole::Admin->value) {
-            $validated['academician_id'] = null;
-        }
+        $academicianId = $validated['role'] === UserRole::Admin->value
+            ? null
+            : $validated['academician_id'];
 
-        $validated['password'] = Hash::make($validated['password']);
-        User::create($validated);
+        User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => $validated['role'],
+            'academician_id' => $academicianId,
+        ]);
 
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
@@ -65,7 +70,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        $validated = $this->validateUser($request, $user);
+        $validated = $this->validateExistingUser($request, $user);
 
         if ($validated['role'] === UserRole::Admin->value) {
             $validated['academician_id'] = null;
@@ -93,7 +98,7 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'User deleted successfully.');
     }
 
-    private function validateUser(Request $request, ?User $user = null): array
+    private function validateUser(Request $request): array
     {
         $roleValues = array_map(fn (UserRole $role) => $role->value, UserRole::assignable());
 
@@ -105,9 +110,34 @@ class UserController extends Controller
                 'lowercase',
                 'email',
                 'max:255',
+                Rule::unique('users', 'email'),
+            ],
+            'password' => ['required', 'confirmed', 'min:8'],
+            'role' => ['required', Rule::in($roleValues)],
+            'academician_id' => [
+                'nullable',
+                'required_unless:role,'.UserRole::Admin->value,
+                'exists:academicians,id',
+                Rule::unique('users', 'academician_id'),
+            ],
+        ]);
+    }
+
+    private function validateExistingUser(Request $request, User $user): array
+    {
+        $roleValues = array_map(fn (UserRole $role) => $role->value, UserRole::assignable());
+
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
                 Rule::unique('users', 'email')->ignore($user),
             ],
-            'password' => [$user ? 'nullable' : 'required', 'confirmed', 'min:8'],
+            'password' => ['nullable', 'confirmed', 'min:8'],
             'role' => ['required', Rule::in($roleValues)],
             'academician_id' => [
                 'nullable',
